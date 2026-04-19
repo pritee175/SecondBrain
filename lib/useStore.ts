@@ -68,26 +68,28 @@ function useFirebaseState<T>(userId: string, key: string, initial: T) {
   }, [userId, key]);
 
   const set = useCallback(async (val: T | ((prev: T) => T)) => {
-    setState(prev => {
-      const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
+    const next = typeof val === "function" ? (val as (p: T) => T)(state) : val;
+    
+    // Save to Firebase FIRST, then update state
+    const docRef = doc(db, "users", userId, "data", key);
+    
+    try {
+      // Ensure arrays stay as arrays
+      let dataToSave = next;
+      if (Array.isArray(next)) {
+        dataToSave = [...next] as T;
+      }
       
-      // Save to Firebase - ensure proper serialization
-      const docRef = doc(db, "users", userId, "data", key);
-      // Convert to JSON and back to ensure clean serialization
-      const dataToSave = JSON.parse(JSON.stringify(next));
+      await setDoc(docRef, { value: dataToSave });
+      console.log(`✓ Saved ${key} to Firebase`, Array.isArray(dataToSave) ? `Array[${dataToSave.length}]` : typeof dataToSave);
       
-      setDoc(docRef, { value: dataToSave }, { merge: true })
-        .then(() => {
-          console.log(`✓ Saved ${key} to Firebase`);
-        })
-        .catch(error => {
-          console.error(`✗ Error saving ${key}:`, error);
-          console.error(`Error code: ${error.code}`);
-        });
-      
-      return next;
-    });
-  }, [userId, key]);
+      // Only update state after successful save
+      setState(next);
+    } catch (error: any) {
+      console.error(`✗ Error saving ${key}:`, error);
+      console.error(`Error code: ${error.code}`);
+    }
+  }, [userId, key, state]);
 
   return [state, set, loading] as const;
 }
