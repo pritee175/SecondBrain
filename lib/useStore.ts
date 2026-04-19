@@ -55,9 +55,10 @@ function useFirebaseState<T>(userId: string, key: string, initial: T) {
     setState(prev => {
       const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
       
-      // Save to Firebase
+      // Save to Firebase - ensure arrays are properly serialized
       const docRef = doc(db, "users", userId, "data", key);
-      setDoc(docRef, { value: next }, { merge: true }).catch(error => {
+      const dataToSave = Array.isArray(next) ? [...next] : next;
+      setDoc(docRef, { value: dataToSave }, { merge: true }).catch(error => {
         console.error(`Error saving ${key}:`, error);
       });
       
