@@ -1,0 +1,36 @@
+🚨 URGENT FIX - YOUR DATA IS SAVED BUT CAN'T BE READ
+=======================================================
+
+YOUR PROBLEM:
+- Data saves successfully ✓
+- Data disappears on refresh ✗
+- Console shows "No data, using initial" for everything
+
+ROOT CAUSE:
+Firebase security rules are blocking READ access!
+
+FIX IN 2 MINUTES:
+=================
+
+1. Open this link:
+   https://console.firebase.google.com/project/second-brain-18b46/firestore/rules
+
+2. You'll see a text editor with rules
+
+3. DELETE EVERYTHING and paste this:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/data/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+
+4. Click the blue "Publish" button at the top
+
+5. Refresh your app - YOUR DATA WILL APPEAR!
+
+That's it! Your "aa" task and all other data is already in Firebase, 
+it just can't be read because of the security rules.
