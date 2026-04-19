@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fix Firebase Data</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; margin-top: 0; }
+    button {
+      background: #0070f3;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover { background: #0051cc; }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      background: #f0f0f0;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .info { background: #d1ecf1; color: #0c5460; }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 Fix Firebase Data Structure</h1>
+    <p>This tool converts corrupted Firebase data (objects with numeric keys) back to proper arrays.</p>
+    
+    <div id="status" class="status info">
+      <strong>Status:</strong> Ready to fix data
+    </div>
+
+    <div style="margin-top: 20px;">
+      <button id="fixBtn" onclick="fixAllData()">Fix All Data</button>
+      <button onclick="checkData()">Check Data Structure</button>
+    </div>
+
+    <div id="output" style="margin-top: 20px;"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+    import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAMCbLzbJ3Jk83zjJATHSOQVP2qI5kBKxQ",
+      authDomain: "second-brain-18b46.firebaseapp.com",
+      projectId: "second-brain-18b46",
+      storageBucket: "second-brain-18b46.firebasestorage.app",
+      messagingSenderId: "927504873910",
+      appId: "1:927504873910:web:78f9f89eaa78a2c15a2917",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUserId = null;
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUserId = user.uid;
+        updateStatus(`Logged in as: ${user.email}`, 'success');
+      } else {
+        currentUserId = null;
+        updateStatus('Please log in to your Second Brain app first, then return here', 'error');
+        document.getElementById('fixBtn').disabled = true;
+      }
+    });
+
+    function updateStatus(message, type = 'info') {
+      const statusEl = document.getElementById('status');
+      statusEl.innerHTML = `<strong>Status:</strong> ${message}`;
+      statusEl.className = `status ${type}`;
+    }
+
+    function isObjectWithNumericKeys(obj) {
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+      const keys = Object.keys(obj);
+      return keys.length > 0 && keys.every(k => /^\d+$/.test(k));
+    }
+
+    function objectToArray(obj) {
+      if (Array.isArray(obj)) return obj;
+      if (!isObjectWithNumericKeys(obj)) return obj;
+      
+      const keys = Object.keys(obj).map(Number).sort((a, b) => a - b);
+      return keys.map(k => obj[k]);
+    }
+
+    window.checkData = async function() {
+      if (!currentUserId) {
+        alert('Please log in first');
+        return;
+      }
+
+      const collections = [
+        'habits', 'goals', 'projects', 'todos', 'journals',
+        'captures', 'meals', 'applications', 'events',
+        'finances', 'savedPosts', 'selfTalks'
+      ];
+
+      let output = '<h3>Data Structure Check:</h3>';
+      let issuesFound = false;
+
+      for (const collectionName of collections) {
+        const docRef = doc(db, 'users', currentUserId, 'data', collectionName);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data().value;
+          const isCorrupted = isObjectWithNumericKeys(data);
+          
+          if (isCorrupted) {
+            issuesFound = true;
+            output += `<div style="color: #d9534f;">❌ ${collectionName}: CORRUPTED (object with numeric keys)</div>`;
+          } else if (Array.isArray(data)) {
+            output += `<div style="color: #5cb85c;">✓ ${collectionName}: OK (${data.length} items)</div>`;
+          } else {
+            output += `<div style="color: #f0ad4e;">⚠ ${collectionName}: ${typeof data}</div>`;
+          }
+        } else {
+          output += `<div style="color: #999;">○ ${collectionName}: No data</div>`;
+        }
+      }
+
+      if (issuesFound) {
+        output += '<p style="margin-top: 20px; color: #d9534f;"><strong>Issues found! Click "Fix All Data" to repair.</strong></p>';
+      } else {
+        output += '<p style="margin-top: 20px; color: #5cb85c;"><strong>All data structures look good!</strong></p>';
+      }
+
+      document.getElementById('output').innerHTML = output;
+    };
+
+    window.fixAllData = async function() {
+      if (!currentUserId) {
+        alert('Please log in first');
+        return;
+      }
+
+      if (!confirm('This will convert all corrupted data structures. Continue?')) {
+        return;
+      }
+
+      updateStatus('Fixing data...', 'info');
+      document.getElementById('fixBtn').disabled = true;
+
+      const collections = [
+        'habits', 'goals', 'projects', 'todos', 'journals',
+        'captures', 'meals', 'applications', 'events',
+        'finances', 'savedPosts', 'selfTalks'
+      ];
+
+      let fixed = 0;
+      let skipped = 0;
+      let errors = 0;
+
+      for (const collectionName of collections) {
+        try {
+          const docRef = doc(db, 'users', currentUserId, 'data', collectionName);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            const data = docSnap.data().value;
+            
+            if (isObjectWithNumericKeys(data)) {
+              const fixedArray = objectToArray(data);
+              await setDoc(docRef, { value: fixedArray }, { merge: true });
+              console.log(`Fixed ${collectionName}:`, fixedArray);
+              fixed++;
+            } else {
+              skipped++;
+            }
+          } else {
+            skipped++;
+          }
+        } catch (error) {
+          console.error(`Error fixing ${collectionName}:`, error);
+          errors++;
+        }
+      }
+
+      document.getElementById('fixBtn').disabled = false;
+      
+      if (errors > 0) {
+        updateStatus(`Completed with errors: ${fixed} fixed, ${skipped} skipped, ${errors} errors`, 'error');
+      } else {
+        updateStatus(`Success! Fixed ${fixed} collections, ${skipped} were already OK`, 'success');
+      }
+
+      // Refresh check
+      await checkData();
+    };
+  </script>
+</body>
+</html>
