@@ -1,0 +1,14 @@
+🔧 QUICK FIX FOR DISAPPEARING DATA
+================================
+
+Your data disappears after refresh because Firebase stored it incorrectly.
+
+STEPS TO FIX:
+1. Open: scripts/fix-firebase-data.html in your browser
+2. Make sure you're logged into https://second-brain-jdx4.vercel.app in another tab
+3. Click "Fix All Data" button
+4. Refresh your app - data should now stay!
+
+That's it! The code fix is already deployed, you just need to clean up the old corrupted data once.
+
+Alternative: Just delete all your current data in the app and re-add it fresh. The new data will be stored correctly.
