@@ -19,11 +19,22 @@ function useFirebaseState<T>(userId: string, key: string, initial: T) {
 
   // Real-time listener for Firebase data
   useEffect(() => {
+    console.log(`📡 Setting up listener for ${key}`);
     const docRef = doc(db, "users", userId, "data", key);
     
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         let data = docSnap.data().value as T;
+        console.log(`✓ Loaded ${key}:`, Array.isArray(data) ? `Array[${data.length}]` : typeof data);
+        
+        // Check for corrupted data (object with numeric keys)
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          const keys = Object.keys(data);
+          if (keys.length > 0 && keys.every(k => /^\d+$/.test(k))) {
+            console.warn(`⚠ ${key} is corrupted (object with numeric keys), converting to array`);
+            data = Object.values(data) as T;
+          }
+        }
         
         // Clean old seeded data
         if (key === "goals" && Array.isArray(data)) {
@@ -38,16 +49,21 @@ function useFirebaseState<T>(userId: string, key: string, initial: T) {
         
         setState(data);
       } else {
+        console.log(`○ ${key}: No data, using initial`);
         setState(initial);
       }
       setLoading(false);
     }, (error) => {
-      console.error(`Error loading ${key}:`, error);
+      console.error(`✗ Error loading ${key}:`, error);
+      console.error(`Error code: ${error.code}`);
       setState(initial);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      console.log(`🔌 Unsubscribing from ${key}`);
+      unsubscribe();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, key]);
 
@@ -55,12 +71,19 @@ function useFirebaseState<T>(userId: string, key: string, initial: T) {
     setState(prev => {
       const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
       
-      // Save to Firebase - ensure arrays are properly serialized
+      // Save to Firebase - ensure proper serialization
       const docRef = doc(db, "users", userId, "data", key);
-      const dataToSave = Array.isArray(next) ? [...next] : next;
-      setDoc(docRef, { value: dataToSave }, { merge: true }).catch(error => {
-        console.error(`Error saving ${key}:`, error);
-      });
+      // Convert to JSON and back to ensure clean serialization
+      const dataToSave = JSON.parse(JSON.stringify(next));
+      
+      setDoc(docRef, { value: dataToSave }, { merge: true })
+        .then(() => {
+          console.log(`✓ Saved ${key} to Firebase`);
+        })
+        .catch(error => {
+          console.error(`✗ Error saving ${key}:`, error);
+          console.error(`Error code: ${error.code}`);
+        });
       
       return next;
     });

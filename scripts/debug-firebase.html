@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Firebase</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+    button {
+      background: #0e639c;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover { background: #1177bb; }
+    pre {
+      background: #252526;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    .error { color: #f48771; }
+    .success { color: #89d185; }
+    .warning { color: #dcdcaa; }
+  </style>
+</head>
+<body>
+  <h1>🔍 Firebase Debug Tool</h1>
+  <div>
+    <button onclick="testWrite()">Test Write</button>
+    <button onclick="testRead()">Test Read</button>
+    <button onclick="checkRules()">Check Rules</button>
+    <button onclick="viewAllData()">View All Data</button>
+  </div>
+  <pre id="output">Click a button to start debugging...</pre>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+    import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAMCbLzbJ3Jk83zjJATHSOQVP2qI5kBKxQ",
+      authDomain: "second-brain-18b46.firebaseapp.com",
+      projectId: "second-brain-18b46",
+      storageBucket: "second-brain-18b46.firebasestorage.app",
+      messagingSenderId: "927504873910",
+      appId: "1:927504873910:web:78f9f89eaa78a2c15a2917",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUserId = null;
+    let currentUserEmail = null;
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUserId = user.uid;
+        currentUserEmail = user.email;
+        log(`✓ Logged in as: ${user.email}`, 'success');
+      } else {
+        currentUserId = null;
+        log('✗ Not logged in. Please log into your app first.', 'error');
+      }
+    });
+
+    function log(message, type = '') {
+      const output = document.getElementById('output');
+      const timestamp = new Date().toLocaleTimeString();
+      const className = type ? ` class="${type}"` : '';
+      output.innerHTML += `\n[${timestamp}]${className ? `<span${className}>` : ''} ${message}${className ? '</span>' : ''}`;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    window.testWrite = async function() {
+      if (!currentUserId) {
+        log('✗ Not logged in!', 'error');
+        return;
+      }
+
+      log('\n=== WRITE TEST ===');
+      
+      const testData = [
+        { id: 'test1', name: 'Test Habit 1', done: false },
+        { id: 'test2', name: 'Test Habit 2', done: true }
+      ];
+
+      try {
+        const docRef = doc(db, 'users', currentUserId, 'data', 'habits');
+        
+        log('Writing test data...');
+        log(`Data: ${JSON.stringify(testData)}`);
+        
+        await setDoc(docRef, { value: testData }, { merge: true });
+        
+        log('✓ Write successful!', 'success');
+        
+        // Read it back immediately
+        log('Reading back...');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const readData = docSnap.data().value;
+          log(`Read back: ${JSON.stringify(readData)}`);
+          log(`Type: ${Array.isArray(readData) ? 'Array' : typeof readData}`, 
+              Array.isArray(readData) ? 'success' : 'error');
+        }
+      } catch (error) {
+        log(`✗ Error: ${error.message}`, 'error');
+        log(`Code: ${error.code}`, 'error');
+      }
+    };
+
+    window.testRead = async function() {
+      if (!currentUserId) {
+        log('✗ Not logged in!', 'error');
+        return;
+      }
+
+      log('\n=== READ TEST ===');
+      
+      try {
+        const docRef = doc(db, 'users', currentUserId, 'data', 'habits');
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          const data = docSnap.data().value;
+          log(`✓ Data exists`, 'success');
+          log(`Type: ${Array.isArray(data) ? 'Array' : typeof data}`);
+          log(`Content: ${JSON.stringify(data, null, 2)}`);
+        } else {
+          log('✗ No data found', 'warning');
+        }
+      } catch (error) {
+        log(`✗ Error: ${error.message}`, 'error');
+        log(`Code: ${error.code}`, 'error');
+      }
+    };
+
+    window.checkRules = async function() {
+      if (!currentUserId) {
+        log('✗ Not logged in!', 'error');
+        return;
+      }
+
+      log('\n=== RULES CHECK ===');
+      log(`User ID: ${currentUserId}`);
+      log(`Email: ${currentUserEmail}`);
+      
+      // Test read permission
+      try {
+        const docRef = doc(db, 'users', currentUserId, 'data', 'habits');
+        await getDoc(docRef);
+        log('✓ Read permission: OK', 'success');
+      } catch (error) {
+        log(`✗ Read permission: DENIED - ${error.code}`, 'error');
+      }
+
+      // Test write permission
+      try {
+        const docRef = doc(db, 'users', currentUserId, 'data', 'test');
+        await setDoc(docRef, { value: 'test' });
+        log('✓ Write permission: OK', 'success');
+      } catch (error) {
+        log(`✗ Write permission: DENIED - ${error.code}`, 'error');
+      }
+    };
+
+    window.viewAllData = async function() {
+      if (!currentUserId) {
+        log('✗ Not logged in!', 'error');
+        return;
+      }
+
+      log('\n=== ALL DATA ===');
+      
+      const collections = [
+        'habits', 'goals', 'projects', 'todos', 'journals',
+        'captures', 'meals', 'applications', 'events',
+        'finances', 'savedPosts', 'selfTalks'
+      ];
+
+      for (const collectionName of collections) {
+        try {
+          const docRef = doc(db, 'users', currentUserId, 'data', collectionName);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            const data = docSnap.data().value;
+            const type = Array.isArray(data) ? `Array[${data.length}]` : typeof data;
+            log(`${collectionName}: ${type}`);
+            
+            if (Array.isArray(data) && data.length > 0) {
+              log(`  First item: ${JSON.stringify(data[0])}`);
+            } else if (typeof data === 'object' && data !== null) {
+              const keys = Object.keys(data);
+              log(`  Keys: ${keys.join(', ')}`);
+              if (keys.length > 0) {
+                log(`  First value: ${JSON.stringify(data[keys[0]])}`);
+              }
+            }
+          } else {
+            log(`${collectionName}: (empty)`, 'warning');
+          }
+        } catch (error) {
+          log(`${collectionName}: ERROR - ${error.code}`, 'error');
+        }
+      }
+    };
+  </script>
+</body>
+</html>
