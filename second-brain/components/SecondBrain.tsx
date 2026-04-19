@@ -167,8 +167,8 @@ function App({ userId, userName, onLogout }: { userId:string; userName:string; o
 }
 
 export default function SecondBrain() {
-  const { user, ready, login, signup, logout } = useAuth();
+  const { user, ready, login, signup, logout, signInWithGoogle } = useAuth();
   if (!ready) return (<div style={{ minHeight:"100dvh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg)" }}><div style={{ fontSize:32,color:"var(--accent)" }}>⬡</div></div>);
-  if (!user)  return <AuthScreen login={login} signup={signup} />;
+  if (!user)  return <AuthScreen login={login} signup={signup} signInWithGoogle={signInWithGoogle} />;
   return <App userId={user.id} userName={user.name} onLogout={logout} />;
 }

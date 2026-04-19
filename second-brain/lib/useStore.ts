@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { db } from "./firebase";
 import type {
   Habit, Goal, Project, Todo, JournalEntry, CaptureItem,
   Meal, FinanceEntry, Application, CalendarEvent, SavedPost, SelfTalk,
@@ -11,61 +13,76 @@ const OLD_GOAL_IDS    = new Set(["g1","g2","g3","g4"]);
 const OLD_PROJECT_IDS = new Set(["p1","p2"]);
 const OLD_HABIT_IDS   = new Set(["h1","h2","h3","h4"]);
 
-function useLocalState<T>(userId: string, key: string, initial: T) {
-  const fullKey = `sb_${userId}_${key}`;
+function useFirebaseState<T>(userId: string, key: string, initial: T) {
   const [state, setState] = useState<T>(initial);
+  const [loading, setLoading] = useState(true);
 
+  // Real-time listener for Firebase data
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(fullKey);
-      if (raw !== null) {
-        let parsed = JSON.parse(raw) as T;
-        if (key === "goals"    && Array.isArray(parsed)) {
-          parsed = (parsed as Goal[]).filter(g => !OLD_GOAL_IDS.has(g.id)) as unknown as T;
-          localStorage.setItem(fullKey, JSON.stringify(parsed));
+    const docRef = doc(db, "users", userId, "data", key);
+    
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        let data = docSnap.data().value as T;
+        
+        // Clean old seeded data
+        if (key === "goals" && Array.isArray(data)) {
+          data = (data as Goal[]).filter(g => !OLD_GOAL_IDS.has(g.id)) as unknown as T;
         }
-        if (key === "projects" && Array.isArray(parsed)) {
-          parsed = (parsed as Project[]).filter(p => !OLD_PROJECT_IDS.has(p.id)) as unknown as T;
-          localStorage.setItem(fullKey, JSON.stringify(parsed));
+        if (key === "projects" && Array.isArray(data)) {
+          data = (data as Project[]).filter(p => !OLD_PROJECT_IDS.has(p.id)) as unknown as T;
         }
-        if (key === "habits"   && Array.isArray(parsed)) {
-          parsed = (parsed as Habit[]).filter(h => !OLD_HABIT_IDS.has(h.id)) as unknown as T;
-          localStorage.setItem(fullKey, JSON.stringify(parsed));
+        if (key === "habits" && Array.isArray(data)) {
+          data = (data as Habit[]).filter(h => !OLD_HABIT_IDS.has(h.id)) as unknown as T;
         }
-        setState(parsed);
+        
+        setState(data);
       } else {
         setState(initial);
       }
-    } catch { setState(initial); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fullKey]);
+      setLoading(false);
+    }, (error) => {
+      console.error(`Error loading ${key}:`, error);
+      setState(initial);
+      setLoading(false);
+    });
 
-  const set = useCallback((val: T | ((prev: T) => T)) => {
+    return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, key]);
+
+  const set = useCallback(async (val: T | ((prev: T) => T)) => {
     setState(prev => {
       const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
-      try { localStorage.setItem(fullKey, JSON.stringify(next)); } catch {}
+      
+      // Save to Firebase
+      const docRef = doc(db, "users", userId, "data", key);
+      setDoc(docRef, { value: next }, { merge: true }).catch(error => {
+        console.error(`Error saving ${key}:`, error);
+      });
+      
       return next;
     });
-  }, [fullKey]);
+  }, [userId, key]);
 
-  return [state, set] as const;
+  return [state, set, loading] as const;
 }
 
 export function useStore(userId: string) {
   const u = userId;
-  const [habits,       setHabitsRaw]    = useLocalState<Habit[]>(u,        "habits",       []);
-  const [goals,        setGoals]        = useLocalState<Goal[]>(u,         "goals",        []);
-  const [projects,     setProjects]     = useLocalState<Project[]>(u,      "projects",     []);
-  const [todos,        setTodosRaw]     = useLocalState<Todo[]>(u,         "todos",        []);
-  const [journals,     setJournals]     = useLocalState<JournalEntry[]>(u, "journals",     []);
-  const [captures,     setCaptures]     = useLocalState<CaptureItem[]>(u,  "captures",     []);
-  const [meals,        setMeals]        = useLocalState<Meal[]>(u,         "meals",        []);
-  const [waterLogs,    setWaterLogs]    = useLocalState<Record<string,number>>(u, "waterLogs", {});
-  const [applications, setApplications] = useLocalState<Application[]>(u,  "applications", []);
-  const [events,       setEvents]       = useLocalState<CalendarEvent[]>(u, "events",      []);
-  const [finances,     setFinances]     = useLocalState<FinanceEntry[]>(u,  "finances",    []);
-  const [savedPosts,   setSavedPosts]   = useLocalState<SavedPost[]>(u,    "savedPosts",   []);
-  const [selfTalks,    setSelfTalks]    = useLocalState<SelfTalk[]>(u,     "selfTalks",    []);
+  const [habits,       setHabitsRaw,    loadingHabits]    = useFirebaseState<Habit[]>(u,        "habits",       []);
+  const [goals,        setGoals,        loadingGoals]     = useFirebaseState<Goal[]>(u,         "goals",        []);
+  const [projects,     setProjects,     loadingProjects]  = useFirebaseState<Project[]>(u,      "projects",     []);
+  const [todos,        setTodosRaw,     loadingTodos]     = useFirebaseState<Todo[]>(u,         "todos",        []);
+  const [journals,     setJournals,     loadingJournals]  = useFirebaseState<JournalEntry[]>(u, "journals",     []);
+  const [captures,     setCaptures,     loadingCaptures]  = useFirebaseState<CaptureItem[]>(u,  "captures",     []);
+  const [meals,        setMeals,        loadingMeals]     = useFirebaseState<Meal[]>(u,         "meals",        []);
+  const [waterLogs,    setWaterLogs,    loadingWater]     = useFirebaseState<Record<string,number>>(u, "waterLogs", {});
+  const [applications, setApplications, loadingApps]      = useFirebaseState<Application[]>(u,  "applications", []);
+  const [events,       setEvents,       loadingEvents]    = useFirebaseState<CalendarEvent[]>(u, "events",      []);
+  const [finances,     setFinances,     loadingFinances]  = useFirebaseState<FinanceEntry[]>(u,  "finances",    []);
+  const [savedPosts,   setSavedPosts,   loadingPosts]     = useFirebaseState<SavedPost[]>(u,    "savedPosts",   []);
+  const [selfTalks,    setSelfTalks,    loadingSelfTalks] = useFirebaseState<SelfTalk[]>(u,     "selfTalks",    []);
 
   // ── Daily habit reset ──────────────────────────────────────────
   // When a habit's lastDone !== today AND !== yesterday → streak broken, mark undone

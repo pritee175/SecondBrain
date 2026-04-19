@@ -1,0 +1,120 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║  📝 FIREBASE CONFIGURATION EXAMPLE                                   ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+After creating your Firebase project, you'll get a config that looks like this:
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ const firebaseConfig = {                                             │
+│   apiKey: "AIzaSyBxxx_your_actual_key_here_xxxxx",                  │
+│   authDomain: "second-brain-12345.firebaseapp.com",                 │
+│   projectId: "second-brain-12345",                                  │
+│   storageBucket: "second-brain-12345.appspot.com",                  │
+│   messagingSenderId: "123456789012",                                │
+│   appId: "1:123456789012:web:abcdef1234567890"                      │
+│ };                                                                   │
+└──────────────────────────────────────────────────────────────────────┘
+
+WHERE TO PUT IT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Option 1: Direct in Code (Easiest)
+───────────────────────────────────
+File: second-brain/lib/firebase.ts
+
+Replace this:
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  ...
+
+With your actual values:
+  apiKey: "AIzaSyBxxx_your_actual_key_here_xxxxx",
+  authDomain: "second-brain-12345.firebaseapp.com",
+  ...
+
+
+Option 2: Environment Variables (More Secure)
+──────────────────────────────────────────────
+File: second-brain/.env.local (create this file)
+
+NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyBxxx_your_actual_key_here_xxxxx
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=second-brain-12345.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=second-brain-12345
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=second-brain-12345.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789012
+NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:abcdef1234567890
+
+
+FIRESTORE SECURITY RULES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In Firebase Console → Firestore Database → Rules tab
+
+Paste this:
+
+┌──────────────────────────────────────────────────────────────────────┐
+│ rules_version = '2';                                                 │
+│ service cloud.firestore {                                            │
+│   match /databases/{database}/documents {                            │
+│     // Users can only read/write their own data                      │
+│     match /users/{userId}/data/{document=**} {                       │
+│       allow read, write: if request.auth != null                     │
+│                             && request.auth.uid == userId;           │
+│     }                                                                 │
+│   }                                                                   │
+│ }                                                                     │
+└──────────────────────────────────────────────────────────────────────┘
+
+Then click "Publish"
+
+
+TESTING CHECKLIST:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Firebase project created
+□ Authentication enabled (Email/Password)
+□ Firestore database created
+□ Security rules published
+□ Config added to lib/firebase.ts or .env.local
+□ Dev server restarted (npm run dev)
+□ Can create new account
+□ Can add tasks/habits/data
+□ Can logout and login again
+□ Data persists after login
+□ Can access from another device
+□ Data syncs between devices
+
+If all checked → You're done! 🎉
+
+
+COMMON ERRORS & FIXES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Error: "Firebase: Error (auth/configuration-not-found)"
+Fix: Add your Firebase config to lib/firebase.ts
+
+Error: "Missing or insufficient permissions"
+Fix: Check Firestore security rules are set correctly
+
+Error: "Firebase: Error (auth/invalid-api-key)"
+Fix: Double-check your API key is correct
+
+Error: "Firebase: Error (auth/network-request-failed)"
+Fix: Check internet connection / firewall settings
+
+
+NEED HELP?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read the detailed guides:
+  → README_FIREBASE.md (complete guide)
+  → QUICK_START.md (quick reference)
+  → FIREBASE_SETUP.md (step-by-step)
+
+Firebase Documentation:
+  → https://firebase.google.com/docs/web/setup
+  → https://firebase.google.com/docs/auth
+  → https://firebase.google.com/docs/firestore
+

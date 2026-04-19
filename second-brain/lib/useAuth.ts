@@ -1,5 +1,16 @@
 "use client";
 import { useState, useEffect } from "react";
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged,
+  updateProfile,
+  signInWithPopup,
+  GoogleAuthProvider,
+  User as FirebaseUser
+} from "firebase/auth";
+import { auth } from "./firebase";
 
 export interface User {
   id: string;
@@ -7,76 +18,84 @@ export interface User {
   email: string;
 }
 
-interface StoredUser {
-  id: string;
-  name: string;
-  email: string;
-  passwordHash: string;
-}
-
-// Very simple hash for demo — good enough for local-only auth
-function simpleHash(str: string): string {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
-  }
-  return h.toString(36);
-}
-
-function getUsers(): StoredUser[] {
-  try { return JSON.parse(localStorage.getItem("sb_users") ?? "[]"); } catch { return []; }
-}
-
-function saveUsers(users: StoredUser[]) {
-  localStorage.setItem("sb_users", JSON.stringify(users));
-}
-
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
 
-  // Restore session on mount
+  // Listen to Firebase auth state changes
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("sb_session");
-      if (raw) setUser(JSON.parse(raw));
-    } catch {}
-    setReady(true);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        setUser({
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "User",
+          email: firebaseUser.email || "",
+        });
+      } else {
+        setUser(null);
+      }
+      setReady(true);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  function signup(name: string, email: string, password: string): string | null {
-    const users = getUsers();
-    if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
-      return "An account with this email already exists.";
+  async function signup(name: string, email: string, password: string): Promise<string | null> {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Set display name
+      await updateProfile(userCredential.user, { displayName: name });
+      return null;
+    } catch (error: any) {
+      if (error.code === "auth/email-already-in-use") {
+        return "An account with this email already exists.";
+      } else if (error.code === "auth/weak-password") {
+        return "Password should be at least 6 characters.";
+      } else if (error.code === "auth/invalid-email") {
+        return "Invalid email address.";
+      }
+      return error.message || "Signup failed. Please try again.";
     }
-    const newUser: StoredUser = {
-      id: `u_${Date.now()}`,
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      passwordHash: simpleHash(password),
-    };
-    saveUsers([...users, newUser]);
-    const session: User = { id: newUser.id, name: newUser.name, email: newUser.email };
-    localStorage.setItem("sb_session", JSON.stringify(session));
-    setUser(session);
-    return null;
   }
 
-  function login(email: string, password: string): string | null {
-    const users = getUsers();
-    const found = users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
-    if (!found) return "No account found with this email.";
-    if (found.passwordHash !== simpleHash(password)) return "Incorrect password.";
-    const session: User = { id: found.id, name: found.name, email: found.email };
-    localStorage.setItem("sb_session", JSON.stringify(session));
-    setUser(session);
-    return null;
+  async function login(email: string, password: string): Promise<string | null> {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      return null;
+    } catch (error: any) {
+      if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+        return "Invalid email or password.";
+      } else if (error.code === "auth/invalid-email") {
+        return "Invalid email address.";
+      } else if (error.code === "auth/invalid-credential") {
+        return "Invalid email or password.";
+      }
+      return error.message || "Login failed. Please try again.";
+    }
   }
 
-  function logout() {
-    localStorage.removeItem("sb_session");
-    setUser(null);
+  async function logout() {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   }
 
-  return { user, ready, signup, login, logout };
+  async function signInWithGoogle(): Promise<string | null> {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      return null;
+    } catch (error: any) {
+      if (error.code === "auth/popup-closed-by-user") {
+        return "Sign-in cancelled.";
+      } else if (error.code === "auth/popup-blocked") {
+        return "Pop-up blocked. Please allow pop-ups and try again.";
+      }
+      return error.message || "Google sign-in failed. Please try again.";
+    }
+  }
+
+  return { user, ready, signup, login, logout, signInWithGoogle };
 }
