@@ -61,15 +61,15 @@ export default function FinanceTab({ finances, setFinances }: Props) {
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:9 }}>
         <div className="sb-card" style={{padding:"12px 10px",textAlign:"center"}}>
           <div className="sb-label" style={{marginBottom:4,fontSize:9}}>INCOME</div>
-          <div style={{fontSize:16,fontWeight:700,color:"#4ade80"}}>${inc.toFixed(0)}</div>
+          <div style={{fontSize:16,fontWeight:700,color:"#4ade80"}}>₹{inc.toFixed(0)}</div>
         </div>
         <div className="sb-card" style={{padding:"12px 10px",textAlign:"center"}}>
           <div className="sb-label" style={{marginBottom:4,fontSize:9}}>EXPENSES</div>
-          <div style={{fontSize:16,fontWeight:700,color:"#ef4444"}}>${exp.toFixed(0)}</div>
+          <div style={{fontSize:16,fontWeight:700,color:"#ef4444"}}>₹{exp.toFixed(0)}</div>
         </div>
         <div className="sb-card" style={{padding:"12px 10px",textAlign:"center"}}>
           <div className="sb-label" style={{marginBottom:4,fontSize:9}}>NET</div>
-          <div style={{fontSize:16,fontWeight:700,color:net>=0?"#4ade80":"#ef4444"}}>{net>=0?"+":""}${net.toFixed(0)}</div>
+          <div style={{fontSize:16,fontWeight:700,color:net>=0?"#4ade80":"#ef4444"}}>{net>=0?"+":""}₹{net.toFixed(0)}</div>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ export default function FinanceTab({ finances, setFinances }: Props) {
             <div key={cat} style={{marginBottom:8}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
                 <div style={{fontSize:12,color:"var(--text2)"}}>{cat}</div>
-                <div style={{fontSize:12,color:"#ef4444"}}>${amt.toFixed(0)}</div>
+                <div style={{fontSize:12,color:"#ef4444"}}>₹{amt.toFixed(0)}</div>
               </div>
               <div style={{height:4,background:"var(--border)",borderRadius:4,overflow:"hidden"}}>
                 <div style={{height:"100%",width:`${Math.min(100,(amt/exp)*100)}%`,background:"linear-gradient(90deg,#ef444477,#ef4444)",borderRadius:4}}/>
@@ -104,7 +104,7 @@ export default function FinanceTab({ finances, setFinances }: Props) {
           ))}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          <input className="sb-input" type="number" value={amt} onChange={e=>setAmt(e.target.value)} placeholder="Amount ($)"/>
+          <input className="sb-input" type="number" value={amt} onChange={e=>setAmt(e.target.value)} placeholder="Amount (₹)"/>
           <select className="sb-input" value={cat} onChange={e=>setCat(e.target.value)}>{FINANCE_CATS[type].map(c=><option key={c}>{c}</option>)}</select>
         </div>
         <div style={{display:"flex",gap:8}}>
@@ -122,7 +122,7 @@ export default function FinanceTab({ finances, setFinances }: Props) {
               <div><div style={{fontSize:14,color:"#fff"}}>{f.desc||f.cat}</div><div style={{fontSize:11,color:"var(--text4)"}}>{f.cat} · {fmtDate(f.date)}</div></div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{fontSize:14,fontWeight:700,color:f.type==="Income"?"#4ade80":"#ef4444"}}>{f.type==="Income"?"+":"-"}${f.amt.toFixed(2)}</div>
+              <div style={{fontSize:14,fontWeight:700,color:f.type==="Income"?"#4ade80":"#ef4444"}}>{f.type==="Income"?"+":"-"}₹{f.amt.toFixed(2)}</div>
               <button onClick={()=>remove(f.id)} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:20,padding:"0 4px"}}>×</button>
             </div>
           </div>

@@ -61,7 +61,7 @@ export default function Dashboard({ habits, setHabits, todos, setTodos, goals, e
         <StatCard label="HABITS"   value={`${doneHabits}/${habits.length}`}                          sub="done today"  color="#4ade80" />
         <StatCard label="TO-DO"    value={`${doneTodos}/${totalTodos}`}                              sub="completed"   color="#60a5fa" />
         <StatCard label="CALORIES" value={todayCalories}                                             sub="/ 2000 kcal" color="#fb923c" />
-        <StatCard label="NET"      value={`${netToday>=0?"+":""}$${netToday.toFixed(0)}`}            sub="today"       color={netToday>=0?"#4ade80":"#ef4444"} />
+        <StatCard label="NET"      value={`${netToday>=0?"+":""}₹${netToday.toFixed(0)}`}            sub="today"       color={netToday>=0?"#4ade80":"#ef4444"} />
       </div>
 
       {/* Quick To-Do */}
