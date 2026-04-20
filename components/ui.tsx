@@ -65,14 +65,18 @@ export function FilterBar({ options, active, onChange, colors }: { options:strin
 
 export function DeleteBtn({ onClick }: { onClick:()=>void }) {
   return (
-    <button onClick={onClick} style={{
-      background:"none", border:"none", color:"var(--text4)", cursor:"pointer",
-      fontSize:20, lineHeight:1, padding:"4px 6px", flexShrink:0,
-      minWidth:36, minHeight:36, display:"flex", alignItems:"center", justifyContent:"center",
-      transition:"color 0.15s, transform 0.15s",
-    }}
-    onMouseEnter={e=>{e.currentTarget.style.color="#ef4444";e.currentTarget.style.transform="scale(1.2)";}}
-    onMouseLeave={e=>{e.currentTarget.style.color="var(--text4)";e.currentTarget.style.transform="scale(1)";}}>×</button>
+    <button 
+      onClick={onClick} 
+      aria-label="Delete"
+      style={{
+        background:"none", border:"none", color:"var(--text4)", cursor:"pointer",
+        fontSize:20, lineHeight:1, padding:"8px 10px", flexShrink:0,
+        minWidth:44, minHeight:44, display:"flex", alignItems:"center", justifyContent:"center",
+        transition:"color 0.15s, transform 0.15s",
+        borderRadius:8,
+      }}
+      onMouseEnter={e=>{e.currentTarget.style.color="#ef4444";e.currentTarget.style.transform="scale(1.15)";e.currentTarget.style.background="#ef444418";}}
+      onMouseLeave={e=>{e.currentTarget.style.color="var(--text4)";e.currentTarget.style.transform="scale(1)";e.currentTarget.style.background="none";}}>×</button>
   );
 }
 
@@ -83,6 +87,42 @@ export function EmptyState({ icon, title, sub, onAdd, addLabel }: { icon:string;
       <div style={{ fontSize:16, color:"var(--text3)", marginBottom:6 }}>{title}</div>
       {sub && <div style={{ fontSize:13, color:"var(--text5)", marginBottom:onAdd?16:0 }}>{sub}</div>}
       {onAdd && <button className="sb-btn" onClick={onAdd}>{addLabel??"+ Add"}</button>}
+    </div>
+  );
+}
+
+export function LoadingSpinner({ size = 32 }: { size?: number }) {
+  return (
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:"40px 20px" }}>
+      <div style={{
+        width: size,
+        height: size,
+        border: "3px solid var(--border)",
+        borderTop: "3px solid var(--accent)",
+        borderRadius: "50%",
+        animation: "spin 0.8s linear infinite"
+      }} />
+    </div>
+  );
+}
+
+export function LoadingOverlay({ message = "Loading..." }: { message?: string }) {
+  return (
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 9999,
+      background: "#000000cc",
+      backdropFilter: "blur(4px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "column",
+      gap: 16,
+      animation: "fadeIn 0.2s ease"
+    }}>
+      <LoadingSpinner size={48} />
+      <div style={{ fontSize: 14, color: "var(--text3)" }}>{message}</div>
     </div>
   );
 }

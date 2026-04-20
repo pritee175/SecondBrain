@@ -136,13 +136,24 @@ function App({ userId, userName, onLogout }: { userId:string; userName:string; o
 
         <div style={{ display:"flex",alignItems:"center",gap:8 }}>
           {/* Search */}
-          <button onClick={()=>setSearchOpen(true)} style={{ background:"none",border:"1px solid var(--border)",borderRadius:8,color:"var(--text3)",cursor:"pointer",fontSize:16,padding:"5px 10px",fontFamily:"inherit" }} title="Search (Ctrl+K)">🔍</button>
+          <button 
+            onClick={()=>setSearchOpen(true)} 
+            style={{ background:"none",border:"1px solid var(--border)",borderRadius:8,color:"var(--text3)",cursor:"pointer",fontSize:16,padding:"8px 12px",fontFamily:"inherit",minHeight:44,minWidth:44,display:"flex",alignItems:"center",justifyContent:"center" }} 
+            title="Search (Ctrl+K)"
+            aria-label="Search">🔍</button>
           {/* Backup */}
-          <button onClick={()=>setDataOpen(true)} style={{ background:"none",border:"1px solid var(--border)",borderRadius:8,color:"var(--text3)",cursor:"pointer",fontSize:16,padding:"5px 10px" }} title="Backup / Restore">💾</button>
+          <button 
+            onClick={()=>setDataOpen(true)} 
+            style={{ background:"none",border:"1px solid var(--border)",borderRadius:8,color:"var(--text3)",cursor:"pointer",fontSize:16,padding:"8px 12px",minHeight:44,minWidth:44,display:"flex",alignItems:"center",justifyContent:"center" }} 
+            title="Backup / Restore"
+            aria-label="Backup and Restore">💾</button>
           {/* Avatar */}
-          <div style={{ width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff" }}>{userName[0].toUpperCase()}</div>
+          <div style={{ width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,color:"#fff" }} aria-label={`User: ${userName}`}>{userName[0].toUpperCase()}</div>
           <span className="hide-mobile" style={{ fontSize:13,color:"var(--text2)" }}>{userName}</span>
-          <button onClick={onLogout} style={{ background:"none",border:"1px solid var(--border)",borderRadius:8,color:"var(--text3)",cursor:"pointer",fontSize:12,padding:"5px 10px",fontFamily:"inherit" }}>Sign out</button>
+          <button 
+            onClick={onLogout} 
+            style={{ background:"none",border:"1px solid var(--border)",borderRadius:8,color:"var(--text3)",cursor:"pointer",fontSize:12,padding:"8px 14px",fontFamily:"inherit",minHeight:44 }}
+            aria-label="Sign out">Sign out</button>
         </div>
       </header>
 
@@ -168,7 +179,31 @@ function App({ userId, userName, onLogout }: { userId:string; userName:string; o
 
 export default function SecondBrain() {
   const { user, ready, login, signup, logout, signInWithGoogle } = useAuth();
-  if (!ready) return (<div style={{ minHeight:"100dvh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg)" }}><div style={{ fontSize:32,color:"var(--accent)" }}>⬡</div></div>);
+  
+  if (!ready) {
+    return (
+      <div style={{ 
+        minHeight:"100dvh",
+        display:"flex",
+        alignItems:"center",
+        justifyContent:"center",
+        flexDirection:"column",
+        gap:16,
+        background:"var(--bg)" 
+      }}>
+        <div style={{
+          width:48,
+          height:48,
+          border:"3px solid var(--border)",
+          borderTop:"3px solid var(--accent)",
+          borderRadius:"50%",
+          animation:"spin 0.8s linear infinite"
+        }} />
+        <div style={{ fontSize:14, color:"var(--text4)" }}>Loading Second Brain...</div>
+      </div>
+    );
+  }
+  
   if (!user)  return <AuthScreen login={login} signup={signup} signInWithGoogle={signInWithGoogle} />;
   return <App userId={user.id} userName={user.name} onLogout={logout} />;
 }
