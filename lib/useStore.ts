@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import type {
@@ -16,6 +16,7 @@ const OLD_HABIT_IDS   = new Set(["h1","h2","h3","h4"]);
 function useFirebaseState<T>(userId: string, key: string, initial: T) {
   const [state, setState] = useState<T>(initial);
   const [loading, setLoading] = useState(true);
+  const isInitializing = useRef(true);
 
   // Real-time listener for Firebase data
   useEffect(() => {
@@ -56,11 +57,13 @@ function useFirebaseState<T>(userId: string, key: string, initial: T) {
         setState(initial);
       }
       setLoading(false);
+      isInitializing.current = false;
     }, (error) => {
       console.error(`✗ Error loading ${key}:`, error);
       console.error(`Error code: ${error.code}`);
       setState(initial);
       setLoading(false);
+      isInitializing.current = false;
     });
 
     return () => {
@@ -73,6 +76,12 @@ function useFirebaseState<T>(userId: string, key: string, initial: T) {
   const set = useCallback((val: T | ((prev: T) => T)) => {
     setState(prev => {
       const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
+      
+      // Don't save during initialization
+      if (isInitializing.current) {
+        console.log(`⏭ Skipping save for ${key} (still initializing)`);
+        return next;
+      }
       
       // Save to Firebase
       const docRef = doc(db, "users", userId, "data", key);
