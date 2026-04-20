@@ -24,7 +24,10 @@ function useFirebaseState<T>(userId: string, key: string, initial: T) {
     
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
-        let data = docSnap.data().value as T;
+        const rawData = docSnap.data();
+        console.log(`📥 Raw data for ${key}:`, rawData);
+        
+        let data = rawData.value as T;
         console.log(`✓ Loaded ${key}:`, Array.isArray(data) ? `Array[${data.length}]` : typeof data);
         
         // Check for corrupted data (object with numeric keys)
@@ -67,29 +70,29 @@ function useFirebaseState<T>(userId: string, key: string, initial: T) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, key]);
 
-  const set = useCallback(async (val: T | ((prev: T) => T)) => {
-    const next = typeof val === "function" ? (val as (p: T) => T)(state) : val;
-    
-    // Save to Firebase FIRST, then update state
-    const docRef = doc(db, "users", userId, "data", key);
-    
-    try {
-      // Ensure arrays stay as arrays
-      let dataToSave = next;
-      if (Array.isArray(next)) {
-        dataToSave = [...next] as T;
-      }
+  const set = useCallback((val: T | ((prev: T) => T)) => {
+    setState(prev => {
+      const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
       
-      await setDoc(docRef, { value: dataToSave });
-      console.log(`✓ Saved ${key} to Firebase`, Array.isArray(dataToSave) ? `Array[${dataToSave.length}]` : typeof dataToSave);
+      // Save to Firebase
+      const docRef = doc(db, "users", userId, "data", key);
       
-      // Only update state after successful save
-      setState(next);
-    } catch (error: any) {
-      console.error(`✗ Error saving ${key}:`, error);
-      console.error(`Error code: ${error.code}`);
-    }
-  }, [userId, key, state]);
+      console.log(`💾 Saving ${key}:`, Array.isArray(next) ? `Array[${(next as any).length}]` : typeof next);
+      console.log(`💾 Data to save:`, next);
+      
+      setDoc(docRef, { value: next })
+        .then(() => {
+          console.log(`✓ Saved ${key} to Firebase successfully`);
+        })
+        .catch(error => {
+          console.error(`✗ Error saving ${key}:`, error);
+          console.error(`Error code: ${error.code}`);
+          console.error(`Error message: ${error.message}`);
+        });
+      
+      return next;
+    });
+  }, [userId, key]);
 
   return [state, set, loading] as const;
 }
